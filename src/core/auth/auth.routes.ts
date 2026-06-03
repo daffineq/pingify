@@ -1,7 +1,7 @@
 import { hash, verify } from 'argon2';
 import { eq } from 'drizzle-orm';
 import Elysia, { t } from 'elysia';
-import { db, user } from 'src/db';
+import { db, session, user } from 'src/db';
 import { createErrorResponse, createSuccessResponse } from 'src/utils/response';
 import { addSession, getBySession } from './auth';
 import { ConflictError, UnauthorizedError, NotFoundError } from 'src/utils/errors';
@@ -54,7 +54,11 @@ const authRoute = () => {
               name: t.String(),
               password: t.String()
             }),
-            detail: { summary: 'Register a new account' }
+            detail: {
+              summary: 'Register a new account',
+              description:
+                'Create a new user account with username and password. Returns a session token for immediate authentication.'
+            }
           }
         )
         .post(
@@ -87,16 +91,55 @@ const authRoute = () => {
               name: t.String(),
               password: t.String()
             }),
-            detail: { summary: 'Sign into an existing account' }
+            detail: {
+              summary: 'Sign into an existing account',
+              description:
+                'Authenticate with an existing username and password. Returns a session token for authenticated requests.'
+            }
           }
         )
-        .post('logout', async ({ cookie: { session } }) => {
-          session?.remove();
+        .post(
+          'logout',
+          async ({ cookie: { session } }) => {
+            session?.remove();
 
-          return createSuccessResponse({
-            message: 'Logged out'
-          });
-        })
+            return createSuccessResponse({
+              message: 'Logged out'
+            });
+          },
+          {
+            detail: {
+              summary: 'Log out from current session',
+              description:
+                'Invalidate the current session cookie. User will be redirected to login on next request.'
+            }
+          }
+        )
+        .post(
+          'logout-all',
+          async ({ cookie: { session: s } }) => {
+            const raw = await getBySession(s.value);
+
+            if (!raw) {
+              throw new NotFoundError('No user found');
+            }
+
+            await db.delete(session).where(eq(session.user_id, raw.id));
+
+            return createSuccessResponse({
+              message: 'Logged all devices out'
+            });
+          },
+          {
+            cookie: t.Object({
+              session: t.String()
+            }),
+            detail: {
+              summary: 'Log out from all sessions',
+              description: 'Invalidate all session tokens for the current user. All devices will be logged out.'
+            }
+          }
+        )
         .put(
           'password',
           async ({ body, cookie: { session } }) => {
@@ -123,7 +166,11 @@ const authRoute = () => {
             }),
             cookie: t.Object({
               session: t.String()
-            })
+            }),
+            detail: {
+              summary: 'Change account password',
+              description: 'Update your account password. Requires the old password for verification.'
+            }
           }
         )
     );

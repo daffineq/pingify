@@ -39,8 +39,8 @@ const app = new Elysia()
         ],
         tags: [
           {
-            name: 'API',
-            description: 'API endpoints'
+            name: 'User',
+            description: 'User endpoints'
           },
           {
             name: 'System',

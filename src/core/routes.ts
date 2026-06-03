@@ -8,12 +8,12 @@ import { NotFoundError } from 'src/utils/errors';
 
 const routes = () => {
   return (app: Elysia) =>
-    app.group('api', { tags: ['API'] }, (app) =>
+    app.group('api', { tags: ['User'] }, (app) =>
       app
         .get(
           'user',
           async ({ cookie: { session } }) => {
-            const raw = await getBySession(session?.value);
+            const raw = await getBySession(session.value);
 
             if (!raw) {
               throw new NotFoundError('No user found');
@@ -36,13 +36,17 @@ const routes = () => {
           {
             cookie: t.Object({
               session: t.String()
-            })
+            }),
+            detail: {
+              summary: 'Get user profile',
+              description: 'Retrieve the current user profile with all associated services.'
+            }
           }
         )
         .get(
           'service/:id',
           async ({ params, cookie: { session } }) => {
-            const raw = await getBySession(session?.value);
+            const raw = await getBySession(session.value);
 
             if (!raw) {
               throw new NotFoundError('No user found');
@@ -69,13 +73,17 @@ const routes = () => {
             }),
             cookie: t.Object({
               session: t.String()
-            })
+            }),
+            detail: {
+              summary: 'Get service details',
+              description: 'Retrieve a specific service with its complete check history and current status.'
+            }
           }
         )
         .post(
           'service',
           async ({ body, cookie: { session } }) => {
-            const raw = await getBySession(session?.value);
+            const raw = await getBySession(session.value);
 
             if (!raw) {
               throw new NotFoundError('No user found');
@@ -107,13 +115,18 @@ const routes = () => {
             }),
             cookie: t.Object({
               session: t.String()
-            })
+            }),
+            detail: {
+              summary: 'Create a new service',
+              description:
+                'Add a new service to monitor. The monitoring will start immediately at the specified interval (in minutes).'
+            }
           }
         )
         .put(
           'service/:id',
           async ({ params, body, cookie: { session } }) => {
-            const raw = await getBySession(session?.value);
+            const raw = await getBySession(session.value);
 
             if (!raw) {
               throw new NotFoundError('No user found');
@@ -148,13 +161,18 @@ const routes = () => {
             }),
             cookie: t.Object({
               session: t.String()
-            })
+            }),
+            detail: {
+              summary: 'Update service configuration',
+              description:
+                'Modify an existing service URL, name, or check interval. Changes take effect immediately.'
+            }
           }
         )
         .delete(
           'service/:id',
           async ({ params, cookie: { session } }) => {
-            const raw = await getBySession(session?.value);
+            const raw = await getBySession(session.value);
 
             if (!raw) {
               throw new NotFoundError('No user found');
@@ -179,7 +197,11 @@ const routes = () => {
             }),
             cookie: t.Object({
               session: t.String()
-            })
+            }),
+            detail: {
+              summary: 'Delete a service',
+              description: 'Remove a service from monitoring. Historical check data will be deleted automatically.'
+            }
           }
         )
     );
