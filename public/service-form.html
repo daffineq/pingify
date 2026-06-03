@@ -107,7 +107,7 @@
             const d = await res.json();
             return showError(d?.error?.message || 'Failed');
           }
-          location.href = 'dashboard.html';
+          location.href = '/';
         } catch {
           showError('Network error');
         }
