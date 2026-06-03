@@ -1,0 +1,1 @@
+ALTER TABLE "service" RENAME COLUMN "interval" TO "interval_s";

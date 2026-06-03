@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pingify — Auth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'class' };
+    </script>
+  </head>
+  <body class="dark bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+      <h1 class="text-2xl font-bold text-center mb-1">Pingify</h1>
+      <p class="text-gray-400 text-sm text-center mb-6">Uptime monitoring</p>
+
+      <div class="flex mb-6 bg-gray-900 rounded-lg p-1">
+        <button
+          onclick="showTab('signin')"
+          id="tab-signin"
+          class="flex-1 py-2 text-sm rounded-md font-medium transition bg-gray-700 text-white"
+        >
+          Sign In
+        </button>
+        <button
+          onclick="showTab('signup')"
+          id="tab-signup"
+          class="flex-1 py-2 text-sm rounded-md font-medium transition text-gray-400 hover:text-white"
+        >
+          Sign Up
+        </button>
+      </div>
+
+      <div id="form-signin">
+        <div class="space-y-3">
+          <input
+            id="signin-name"
+            type="text"
+            placeholder="Username"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+          <input
+            id="signin-pass"
+            type="password"
+            placeholder="Password"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+          <button
+            onclick="signIn()"
+            class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 rounded-lg text-sm transition"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+
+      <div id="form-signup" class="hidden">
+        <div class="space-y-3">
+          <input
+            id="signup-name"
+            type="text"
+            placeholder="Username"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+          <input
+            id="signup-pass"
+            type="password"
+            placeholder="Password"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+          <button
+            onclick="signUp()"
+            class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 rounded-lg text-sm transition"
+          >
+            Create Account
+          </button>
+        </div>
+      </div>
+
+      <div id="error-msg" class="mt-4 text-red-400 text-sm text-center hidden"></div>
+    </div>
+
+    <script>
+      function showTab(tab) {
+        document.getElementById('form-signin').classList.toggle('hidden', tab !== 'signin');
+        document.getElementById('form-signup').classList.toggle('hidden', tab !== 'signup');
+        document.getElementById('tab-signin').className =
+          tab === 'signin'
+            ? 'flex-1 py-2 text-sm rounded-md font-medium transition bg-gray-700 text-white'
+            : 'flex-1 py-2 text-sm rounded-md font-medium transition text-gray-400 hover:text-white';
+        document.getElementById('tab-signup').className =
+          tab === 'signup'
+            ? 'flex-1 py-2 text-sm rounded-md font-medium transition bg-gray-700 text-white'
+            : 'flex-1 py-2 text-sm rounded-md font-medium transition text-gray-400 hover:text-white';
+      }
+
+      function showError(msg) {
+        const el = document.getElementById('error-msg');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      }
+
+      async function signIn() {
+        const name = document.getElementById('signin-name').value.trim();
+        const password = document.getElementById('signin-pass').value;
+        if (!name || !password) return showError('Fill in all fields');
+        try {
+          const res = await fetch('/api/auth/sign-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, password })
+          });
+          if (!res.ok) {
+            const d = await res.json();
+            return showError(d?.error?.message || 'Sign in failed');
+          }
+          location.href = '/';
+        } catch {
+          showError('Network error');
+        }
+      }
+
+      async function signUp() {
+        const name = document.getElementById('signup-name').value.trim();
+        const password = document.getElementById('signup-pass').value;
+        if (!name || !password) return showError('Fill in all fields');
+        try {
+          const res = await fetch('/api/auth/sign-up', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ name, password })
+          });
+          if (!res.ok) {
+            const d = await res.json();
+            return showError(d?.error?.message || 'Sign up failed');
+          }
+          location.href = '/';
+        } catch {
+          showError('Network error');
+        }
+      }
+    </script>
+  </body>
+</html>

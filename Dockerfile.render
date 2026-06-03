@@ -1,0 +1,13 @@
+FROM node:25-alpine
+
+WORKDIR /app
+
+RUN npm install -g bun
+
+RUN apk add --no-cache git netcat-openbsd
+
+COPY . .
+
+RUN bun install
+
+CMD ["sh", "-c", "echo 'Running migrations...' && bun db:migrate && echo 'Starting app...' && bun run prod"]

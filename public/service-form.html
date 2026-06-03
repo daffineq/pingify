@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pingify — Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'class' };
+    </script>
+  </head>
+  <body class="dark bg-gray-950 text-gray-100 min-h-screen">
+    <nav class="border-b border-gray-800 px-6 py-4 flex items-center gap-4">
+      <a href="/" class="text-gray-400 hover:text-white text-sm transition">← Back</a>
+      <span class="font-bold text-lg">Pingify</span>
+    </nav>
+
+    <main class="max-w-md mx-auto px-4 py-8">
+      <h2 id="page-title" class="text-xl font-semibold mb-6">Add Service</h2>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block"
+            >Name <span class="text-gray-600">(optional)</span></label
+          >
+          <input
+            id="field-name"
+            type="text"
+            placeholder="My API"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block">URL</label>
+          <input
+            id="field-url"
+            type="url"
+            placeholder="https://example.com/health"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block"
+            >Check interval (minutes)</label
+          >
+          <input
+            id="field-interval"
+            type="number"
+            value="5"
+            min="1"
+            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500"
+          />
+        </div>
+
+        <div id="error-msg" class="text-red-400 text-sm hidden"></div>
+
+        <button
+          onclick="submit()"
+          class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 rounded-lg text-sm transition"
+        >
+          Save Service
+        </button>
+      </div>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const serviceId = params.get('id');
+
+      function showError(msg) {
+        const el = document.getElementById('error-msg');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      }
+
+      async function loadExisting() {
+        if (!serviceId) return;
+        document.getElementById('page-title').textContent = 'Edit Service';
+        try {
+          const res = await fetch(`/api/service/${serviceId}`, { credentials: 'include' });
+          if (!res.ok) return;
+          const { data } = await res.json();
+          document.getElementById('field-name').value = data.name || '';
+          document.getElementById('field-url').value = data.url || '';
+          document.getElementById('field-interval').value = data.interval_m || 5;
+        } catch {}
+      }
+
+      async function submit() {
+        const url = document.getElementById('field-url').value.trim();
+        const name = document.getElementById('field-name').value.trim();
+        const interval_m = parseInt(document.getElementById('field-interval').value);
+
+        if (!url) return showError('URL is required');
+        if (!interval_m || interval_m < 1) return showError('Interval must be at least 1 minutes');
+
+        const body = { url, interval_m, ...(name && { name }) };
+
+        try {
+          const res = await fetch(serviceId ? `/api/service/${serviceId}` : '/api/service', {
+            method: serviceId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+          });
+          if (!res.ok) {
+            const d = await res.json();
+            return showError(d?.error?.message || 'Failed');
+          }
+          location.href = 'dashboard.html';
+        } catch {
+          showError('Network error');
+        }
+      }
+
+      loadExisting();
+    </script>
+  </body>
+</html>

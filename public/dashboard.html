@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pingify — Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'class' };
+    </script>
+  </head>
+  <body class="dark bg-gray-950 text-gray-100 min-h-screen">
+    <nav class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+      <span class="font-bold text-lg">Pingify</span>
+      <div class="flex items-center gap-4">
+        <span id="username" class="text-gray-400 text-sm"></span>
+        <button onclick="logout()" class="text-sm text-red-400 hover:text-red-300 transition">Logout</button>
+      </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">Services</h2>
+        <a
+          href="service-form"
+          class="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+        >
+          + Add Service
+        </a>
+      </div>
+
+      <div id="loading" class="text-gray-500 text-sm">Loading...</div>
+      <div id="empty" class="hidden text-gray-500 text-sm">No services yet. Add one!</div>
+      <div id="service-list" class="space-y-3 hidden"></div>
+    </main>
+
+    <script>
+      async function logout() {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        location.href = 'auth';
+      }
+
+      async function load() {
+        try {
+          const res = await fetch('/api/user', { credentials: 'include' });
+          if (res.status === 401 || res.status === 404) return (location.href = 'auth.html');
+          const { data } = await res.json();
+
+          document.getElementById('username').textContent = data.name;
+          document.getElementById('loading').classList.add('hidden');
+
+          const services = data.services || [];
+          if (!services.length) {
+            document.getElementById('empty').classList.remove('hidden');
+            return;
+          }
+
+          const list = document.getElementById('service-list');
+          list.classList.remove('hidden');
+          list.innerHTML = services
+            .map(
+              (s) => `
+          <div class="bg-gray-900 border border-gray-800 rounded-lg px-5 py-4 flex items-center justify-between hover:border-gray-600 transition">
+            <div>
+              <div class="font-medium text-sm">${s.name || s.url}</div>
+              <div class="text-gray-500 text-xs mt-0.5">${s.url} · every ${s.interval_m}m</div>
+            </div>
+            <div class="flex items-center gap-3">
+              <a href="service-detail?id=${s.id}" class="text-xs text-blue-400 hover:text-blue-300 transition">Details</a>
+              <a href="service-form?id=${s.id}" class="text-xs text-gray-400 hover:text-white transition">Edit</a>
+              <button onclick="deleteService('${s.id}')" class="text-xs text-red-400 hover:text-red-300 transition">Delete</button>
+            </div>
+          </div>
+        `
+            )
+            .join('');
+        } catch {
+          document.getElementById('loading').textContent = 'Failed to load.';
+        }
+      }
+
+      async function deleteService(id) {
+        if (!confirm('Delete this service?')) return;
+        await fetch(`/api/service/${id}`, { method: 'DELETE', credentials: 'include' });
+        load();
+      }
+
+      load();
+    </script>
+  </body>
+</html>

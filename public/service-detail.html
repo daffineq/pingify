@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pingify — Service Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'class' };
+    </script>
+  </head>
+  <body class="dark bg-gray-950 text-gray-100 min-h-screen">
+    <nav class="border-b border-gray-800 px-6 py-4 flex items-center gap-4">
+      <a href="/" class="text-gray-400 hover:text-white text-sm transition">← Back</a>
+      <span class="font-bold text-lg">Pingify</span>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+      <div id="loading" class="text-gray-500 text-sm">Loading...</div>
+      <div id="content" class="hidden">
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <h2 id="svc-name" class="text-xl font-semibold"></h2>
+            <a id="svc-url" href="#" target="_blank" class="text-blue-400 text-sm hover:underline"></a>
+          </div>
+          <a
+            id="edit-link"
+            href="#"
+            class="text-sm text-gray-400 hover:text-white border border-gray-700 px-3 py-1.5 rounded-lg transition"
+            >Edit</a
+          >
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-8">
+          <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+            <div class="text-xs text-gray-500 mb-1">Uptime</div>
+            <div id="stat-uptime" class="text-lg font-semibold text-green-400">—</div>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+            <div class="text-xs text-gray-500 mb-1">Avg Latency</div>
+            <div id="stat-latency" class="text-lg font-semibold">—</div>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+            <div class="text-xs text-gray-500 mb-1">Interval</div>
+            <div id="stat-interval" class="text-lg font-semibold">—</div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium text-gray-400 uppercase tracking-wide">Check History</h3>
+        </div>
+        <div id="empty-checks" class="hidden text-gray-500 text-sm">No checks recorded yet.</div>
+
+        <div id="timeline-wrap" class="hidden">
+          <div id="timeline-bar" class="flex gap-px rounded-md overflow-hidden h-10"></div>
+          <div class="flex justify-between mt-1.5">
+            <span id="label-oldest" class="text-xs text-gray-600"></span>
+            <span id="label-newest" class="text-xs text-gray-600"></span>
+          </div>
+
+          <div
+            id="tooltip"
+            class="hidden fixed z-50 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs pointer-events-none shadow-lg"
+          ></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const serviceId = params.get('id');
+      if (!serviceId) location.href = '/';
+
+      function bucketColor(ok, total) {
+        if (total === 0) return 'bg-gray-800';
+        const ratio = ok / total;
+        if (ratio === 1) return 'bg-green-500';
+        if (ratio >= 0.5) return 'bg-yellow-500';
+        return 'bg-red-500';
+      }
+
+      function bucketHover(ok, total, label, avgLatency) {
+        return `${label}<br>${ok}/${total} ok · ${avgLatency}ms avg`;
+      }
+
+      function formatLabel(date, isMinute) {
+        if (isMinute) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      }
+
+      function getBucketKey(date, useMinutes) {
+        if (useMinutes) {
+          return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}`;
+        }
+        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+      }
+
+      function renderBar(checks) {
+        if (!checks.length) {
+          document.getElementById('empty-checks').classList.remove('hidden');
+          return;
+        }
+
+        const sorted = [...checks].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const oldest = new Date(sorted[0].created_at);
+        const newest = new Date(sorted[sorted.length - 1].created_at);
+        const spanMs = newest - oldest;
+        const useMinutes = spanMs < 1000 * 60 * 60 * 24;
+
+        const buckets = new Map();
+        for (const c of sorted) {
+          const d = new Date(c.created_at);
+          const key = getBucketKey(d, useMinutes);
+          if (!buckets.has(key)) buckets.set(key, { date: d, ok: 0, total: 0, latencies: [] });
+          const b = buckets.get(key);
+          b.total++;
+          if (c.status >= 200 && c.status < 300) b.ok++;
+          b.latencies.push(c.latency_ms);
+        }
+
+        const entries = [...buckets.values()];
+
+        const bar = document.getElementById('timeline-bar');
+        const tooltip = document.getElementById('tooltip');
+        bar.innerHTML = '';
+
+        entries.forEach((b) => {
+          const avgLat = Math.round(b.latencies.reduce((s, v) => s + v, 0) / b.latencies.length);
+          const label = formatLabel(b.date, useMinutes);
+          const color = bucketColor(b.ok, b.total);
+
+          const seg = document.createElement('div');
+          seg.className = `${color} flex-1 min-w-[4px] cursor-pointer transition-opacity hover:opacity-70`;
+
+          seg.addEventListener('mousemove', (e) => {
+            tooltip.innerHTML = `<span class="font-medium">${label}</span><br><span class="text-gray-400">${b.ok}/${b.total} ok · ${avgLat}ms avg</span>`;
+            tooltip.classList.remove('hidden');
+            tooltip.style.left = `${e.clientX + 12}px`;
+            tooltip.style.top = `${e.clientY - 40}px`;
+          });
+          seg.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+
+          bar.appendChild(seg);
+        });
+
+        document.getElementById('label-oldest').textContent = formatLabel(oldest, useMinutes);
+        document.getElementById('label-newest').textContent = formatLabel(newest, useMinutes);
+        document.getElementById('timeline-wrap').classList.remove('hidden');
+      }
+
+      async function load() {
+        try {
+          const res = await fetch(`/api/service/${serviceId}`, { credentials: 'include' });
+          if (res.status === 401 || res.status === 404) return (location.href = '/auth');
+          const { data } = await res.json();
+
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
+
+          document.getElementById('svc-name').textContent = data.name || data.url;
+          const urlEl = document.getElementById('svc-url');
+          urlEl.textContent = data.url;
+          urlEl.href = data.url;
+          document.getElementById('edit-link').href = `/service-form?id=${data.id}`;
+          document.getElementById('stat-interval').textContent = `${data.interval_m}m`;
+
+          const checks = data.checks || [];
+
+          if (checks.length) {
+            const ok = checks.filter((c) => c.status >= 200 && c.status < 300).length;
+            document.getElementById('stat-uptime').textContent = `${((ok / checks.length) * 100).toFixed(1)}%`;
+            document.getElementById('stat-latency').textContent =
+              `${Math.round(checks.reduce((s, c) => s + c.latency_ms, 0) / checks.length)}ms`;
+          }
+
+          renderBar(checks);
+        } catch {
+          document.getElementById('loading').textContent = 'Failed to load.';
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>
