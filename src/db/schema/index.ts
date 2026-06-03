@@ -31,7 +31,8 @@ export const service = pgTable('service', {
   name: text('name'),
   url: text('url').notNull(),
   interval_m: integer('interval_m').notNull().default(10),
-  last_checked: timestamp('last_checked').notNull().defaultNow()
+  last_checked: timestamp('last_checked').notNull().defaultNow(),
+  is_okay: boolean('is_okay')
 });
 
 export const serviceCheck = pgTable('service_check', {

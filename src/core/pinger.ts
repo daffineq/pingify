@@ -22,6 +22,7 @@ class PingerModule {
         });
 
         await db.update(service).set({
+          is_okay: response.ok,
           last_checked: new Date()
         });
       },
