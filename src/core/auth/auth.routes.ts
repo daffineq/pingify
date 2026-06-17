@@ -10,6 +10,19 @@ export const authRoute = () => {
   return (app: Elysia) =>
     app.group('api/auth', { tags: ['Auth'] }, (app) =>
       app
+        .derive(async ({ cookie: { session } }) => {
+          if (!session?.value) {
+            throw new UnauthorizedError('Unauthorized');
+          }
+
+          const raw = await getBySession(session.value as string);
+
+          if (!raw) {
+            throw new UnauthorizedError('Unauthorized');
+          }
+
+          return { user: raw };
+        })
         .post(
           'sign-up',
           async ({ body, cookie: { session } }) => {
@@ -117,14 +130,8 @@ export const authRoute = () => {
         )
         .post(
           'logout-all',
-          async ({ cookie: { session: s } }) => {
-            const raw = await getBySession(s.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
-            await db.delete(session).where(eq(session.user_id, raw.id));
+          async ({ user }) => {
+            await db.delete(session).where(eq(session.user_id, user.id));
 
             return createSuccessResponse({
               message: 'Logged all devices out'
@@ -142,13 +149,7 @@ export const authRoute = () => {
         )
         .put(
           'password',
-          async ({ body, cookie: { session } }) => {
-            const raw = await getBySession(session?.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
+          async ({ user: raw, body }) => {
             if (raw && (await verify(raw.password, body.old))) {
               await db.update(user).set({ password: await hash(body.new) });
 

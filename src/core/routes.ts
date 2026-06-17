@@ -4,24 +4,31 @@ import { db, service } from 'src/db';
 import { createSuccessResponse } from 'src/utils/response';
 import { and, eq } from 'drizzle-orm';
 import { Pinger } from './pinger';
-import { NotFoundError } from 'src/utils/errors';
+import { NotFoundError, UnauthorizedError } from 'src/utils/errors';
 
 export const routes = () => {
   return (app: Elysia) =>
     app.group('api', { tags: ['User'] }, (app) =>
       app
+        .derive(async ({ cookie: { session } }) => {
+          if (!session?.value) {
+            throw new UnauthorizedError('Unauthorized');
+          }
+
+          const raw = await getBySession(session.value as string);
+
+          if (!raw) {
+            throw new UnauthorizedError('Unauthorized');
+          }
+
+          return { user: raw };
+        })
         .get(
           'user',
-          async ({ cookie: { session } }) => {
-            const raw = await getBySession(session.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
+          async ({ user }) => {
             const data = await db.query.user.findFirst({
               where: {
-                id: raw.id
+                id: user.id
               },
               with: {
                 services: true
@@ -45,17 +52,11 @@ export const routes = () => {
         )
         .get(
           'service/:id',
-          async ({ params, cookie: { session } }) => {
-            const raw = await getBySession(session.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
+          async ({ user, params }) => {
             const data = await db.query.service.findFirst({
               where: {
                 id: params.id,
-                user_id: raw.id
+                user_id: user.id
               },
               with: {
                 checks: true
@@ -82,17 +83,11 @@ export const routes = () => {
         )
         .post(
           'service',
-          async ({ body, cookie: { session } }) => {
-            const raw = await getBySession(session.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
+          async ({ user, body }) => {
             const [returned] = await db
               .insert(service)
               .values({
-                user_id: raw.id,
+                user_id: user.id,
                 name: body.name,
                 url: body.url,
                 interval_m: body.interval_m
@@ -125,13 +120,7 @@ export const routes = () => {
         )
         .put(
           'service/:id',
-          async ({ params, body, cookie: { session } }) => {
-            const raw = await getBySession(session.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
+          async ({ user, params, body }) => {
             const [returned] = await db
               .update(service)
               .set({
@@ -139,7 +128,7 @@ export const routes = () => {
                 url: body.url,
                 interval_m: body.interval_m
               })
-              .where(and(eq(service.id, params.id), eq(service.user_id, raw.id)))
+              .where(and(eq(service.id, params.id), eq(service.user_id, user.id)))
               .returning();
 
             if (returned) {
@@ -171,16 +160,10 @@ export const routes = () => {
         )
         .delete(
           'service/:id',
-          async ({ params, cookie: { session } }) => {
-            const raw = await getBySession(session.value);
-
-            if (!raw) {
-              throw new NotFoundError('No user found');
-            }
-
+          async ({ user, params }) => {
             const [returned] = await db
               .delete(service)
-              .where(and(eq(service.id, params.id), eq(service.user_id, raw.id)))
+              .where(and(eq(service.id, params.id), eq(service.user_id, user.id)))
               .returning();
 
             if (returned) {
