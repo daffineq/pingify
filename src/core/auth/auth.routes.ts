@@ -6,7 +6,7 @@ import { createErrorResponse, createSuccessResponse } from 'src/utils/response';
 import { addSession, getBySession } from './auth';
 import { ConflictError, UnauthorizedError, NotFoundError } from 'src/utils/errors';
 
-const authRoute = () => {
+export const authRoute = () => {
   return (app: Elysia) =>
     app.group('api/auth', { tags: ['Auth'] }, (app) =>
       app
@@ -175,5 +175,3 @@ const authRoute = () => {
         )
     );
 };
-
-export { authRoute };

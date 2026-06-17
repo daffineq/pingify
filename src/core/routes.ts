@@ -6,7 +6,7 @@ import { and, eq } from 'drizzle-orm';
 import { Pinger } from './pinger';
 import { NotFoundError } from 'src/utils/errors';
 
-const routes = () => {
+export const routes = () => {
   return (app: Elysia) =>
     app.group('api', { tags: ['User'] }, (app) =>
       app
@@ -206,5 +206,3 @@ const routes = () => {
         )
     );
 };
-
-export { routes };
