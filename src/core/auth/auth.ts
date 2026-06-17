@@ -1,5 +1,5 @@
+import { createId } from '@paralleldrive/cuid2';
 import { createHash } from 'crypto';
-import cuid from 'cuid';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db, session, user } from 'src/db';
 
@@ -8,7 +8,7 @@ function hashToken(token: string): string {
 }
 
 export async function addSession(id: string) {
-  const token = cuid();
+  const token = createId();
 
   await db.insert(session).values({
     user_id: id,

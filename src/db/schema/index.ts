@@ -1,10 +1,10 @@
-import cuid from 'cuid';
+import { createId } from '@paralleldrive/cuid2';
 import { pgTable, varchar, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: varchar('id', { length: 255 })
     .primaryKey()
-    .$defaultFn(() => cuid()),
+    .$defaultFn(() => createId()),
   name: varchar('name', { length: 255 }).notNull().unique(),
   password: text('password').notNull()
 });
@@ -12,7 +12,7 @@ export const user = pgTable('user', {
 export const session = pgTable('session', {
   id: varchar('id', { length: 255 })
     .primaryKey()
-    .$defaultFn(() => cuid()),
+    .$defaultFn(() => createId()),
   user_id: varchar('user_id', { length: 255 })
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
@@ -24,7 +24,7 @@ export const session = pgTable('session', {
 export const service = pgTable('service', {
   id: varchar('id', { length: 255 })
     .primaryKey()
-    .$defaultFn(() => cuid()),
+    .$defaultFn(() => createId()),
   user_id: varchar('user_id', { length: 255 })
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
@@ -38,7 +38,7 @@ export const service = pgTable('service', {
 export const serviceCheck = pgTable('service_check', {
   id: varchar('id', { length: 255 })
     .primaryKey()
-    .$defaultFn(() => cuid()),
+    .$defaultFn(() => createId()),
   service_id: varchar('service_id', { length: 255 })
     .notNull()
     .references(() => service.id, { onDelete: 'cascade' }),
