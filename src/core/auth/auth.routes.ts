@@ -4,25 +4,12 @@ import Elysia, { t } from 'elysia';
 import { db, session, user } from 'src/db';
 import { createErrorResponse, createSuccessResponse } from 'src/utils/response';
 import { addSession, getBySession } from './auth';
-import { ConflictError, UnauthorizedError, NotFoundError } from 'src/utils/errors';
+import { ConflictError, UnauthorizedError } from 'src/utils/errors';
 
 export const authRoute = () => {
   return (app: Elysia) =>
     app.group('api/auth', { tags: ['Auth'] }, (app) =>
       app
-        .derive(async ({ cookie: { session } }) => {
-          if (!session?.value) {
-            throw new UnauthorizedError('Unauthorized');
-          }
-
-          const raw = await getBySession(session.value as string);
-
-          if (!raw) {
-            throw new UnauthorizedError('Unauthorized');
-          }
-
-          return { user: raw };
-        })
         .post(
           'sign-up',
           async ({ body, cookie: { session } }) => {
@@ -128,6 +115,19 @@ export const authRoute = () => {
             }
           }
         )
+        .derive(async ({ cookie: { session } }) => {
+          if (!session?.value) {
+            throw new UnauthorizedError('Unauthorized');
+          }
+
+          const raw = await getBySession(session.value as string);
+
+          if (!raw) {
+            throw new UnauthorizedError('Unauthorized');
+          }
+
+          return { user: raw };
+        })
         .post(
           'logout-all',
           async ({ user }) => {
